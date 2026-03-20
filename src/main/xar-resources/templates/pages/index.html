@@ -2,13 +2,14 @@
 <div data-template="templates:surround" data-template-with="templates/page.html" data-template-at="main">
     <article class="col-12-md">
         <h1>XQuery Function Documentation</h1>
+        <p class="lead mb-3">Browse and search the complete library of XQuery functions available in your eXist-db instance, including W3C standard functions, eXist-db extensions, and application modules.</p>
         <form id="fun-query-form" name="f-query" class="form-horizontal" action="?" method="GET">
             <div class="row mb-3">
                 <div class="col-lg-6 col-md-8 col-sm-12 mb-1">
                     <div class="input-group">
-                        <input id="query-field" name="q" type="text" placeholder="Start typing to search for modules and functions..." data-template="templates:form-control" class="form-control"/>
-                        <button id="f-btn-search" type="submit" name="action" value="search" class="btn btn-lg btn-primary">
-                            <span class="glyphicon glyphicon-search"></span> Search
+                        <input id="query-field" name="q" type="text" placeholder="Start typing to search for modules and functions..." data-template="templates:form-control" class="form-control" aria-label="Search for functions and modules"/>
+                        <button id="f-btn-search" type="submit" name="action" value="search" class="btn btn-lg btn-primary" aria-label="Search">
+                            <i class="bi bi-search"></i> Search
                         </button>
                     </div>
                 </div>
@@ -29,26 +30,36 @@
                 <div class="btn-toolbar col-lg-6 col-md-12">
                     <div class="btn-group me-2" role="group" aria-label="browse action">
                         <a id="browse" class="btn btn-lg btn-primary" href="browse?extensions=true">
-                            <span class="glyphicon glyphicon-globe"></span> Browse</a>
+                            <i class="bi bi-globe"></i> Browse</a>
+                    </div>
+                    <div class="btn-group me-2 align-self-center" role="group">
+                        <div class="form-check">
+                            <input class="form-check-input" type="checkbox" id="show-deprecated" name="show-deprecated"/>
+                            <label class="form-check-label" for="show-deprecated">Show deprecated</label>
+                        </div>
                     </div>
                     <div class="btn-group me-2" role="group" aria-label="generate action">
-                        <button id="f-btn-reindex-regen" class="btn btn-lg btn-warning" data-template="app:check-dba-user-and-data" data-toggle="tooltip" data-placement="top" title="Regenerate XQuery Function Documentation after modification or addition of functions">
-                            <span class="glyphicon glyphicon-refresh"></span> Regenerate</button>
+                        <button id="f-btn-reindex-regen" class="btn btn-lg btn-warning" data-template="app:check-dba-user-and-data" data-toggle="tooltip" data-placement="top" title="Regenerate XQuery Function Documentation after modification or addition of functions" aria-label="Regenerate function documentation">
+                            <i class="bi bi-arrow-clockwise"></i> Regenerate</button>
                         <img id="f-load-indicator" src="resources/images/ajax-loader.gif"/>
                     </div>
                 </div>
             </div>
         </form>
         <div class="alert alert-warning" data-template="app:check-dba-user-and-not-data">
-            The function documentation has not been generated yet. Click on the <code>Generate</code> button
+            The function documentation has not been generated yet. Click on the <strong>Regenerate</strong> button
             above to index all XQuery modules. This should take less than a minute.
         </div>
         <div class="alert alert-warning" data-template="app:check-not-dba-user-and-not-data">
             The function documentation has not been generated yet. Please contact the database administrator in order to have the function documentation generated.
-            
+        </div>
+        <div class="alert alert-info" data-template="app:check-low-module-count">
+            <strong>Tip:</strong> If you recently installed eXist-db or additional packages, the function
+            documentation may be incomplete. Click <strong>Regenerate</strong> above to re-scan all modules.
         </div>
         <div id="messages"></div>
-        <div id="results">
+        <div id="result-count" class="text-muted mb-2" aria-live="polite"></div>
+        <div id="results" aria-live="polite">
             <div data-template="app:action">
                 <div data-template="app:module"></div>
             </div>

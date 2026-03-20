@@ -13,11 +13,41 @@ document.addEventListener("DOMContentLoaded", function () {
     const loginDialog = document.getElementById("loginDialog");
     if (loginDialog) hideModal(loginDialog);
 
+    function updateResultCount() {
+        const results = document.getElementById("results");
+        const counter = document.getElementById("result-count");
+        if (!results || !counter) return;
+        const functions = results.querySelectorAll(".function");
+        const modules = results.querySelectorAll(".module");
+        if (functions.length > 0) {
+            counter.textContent =
+                functions.length + " function" + (functions.length !== 1 ? "s" : "") +
+                " in " + modules.length + " module" + (modules.length !== 1 ? "s" : "");
+        } else {
+            counter.textContent = "";
+        }
+    }
+
+    function updateURL() {
+        const form = document.getElementById("fun-query-form");
+        if (!form) return;
+        const q = form.querySelector('[name="q"]');
+        const where = form.querySelector('[name="where"]');
+        const params = new URLSearchParams();
+        if (q && q.value) params.set("q", q.value);
+        if (where && where.value !== "everywhere") params.set("where", where.value);
+        params.set("action", "search");
+        const newURL = window.location.pathname + "?" + params.toString();
+        history.replaceState(null, "", newURL);
+    }
+
     function search() {
         const form = document.getElementById("fun-query-form");
         if (!form) return;
         const formData = new FormData(form);
         formData.append("action", "search");
+
+        updateURL();
 
         fetch("query", {
             method: "POST",
@@ -31,6 +61,17 @@ document.addEventListener("DOMContentLoaded", function () {
                     results.innerHTML = data;
                     results.style.display = "block";
                     hljs.highlightAll();
+                    updateResultCount();
+                    const emptyState = document.getElementById("empty-state");
+                    if (results.querySelectorAll(".function").length === 0 && formData.get("q")) {
+                        if (!emptyState) {
+                            const msg = document.createElement("div");
+                            msg.id = "empty-state";
+                            msg.className = "alert alert-info";
+                            msg.textContent = 'No results found for "' + formData.get("q") + '". Try a different search term or search location.';
+                            results.appendChild(msg);
+                        }
+                    }
                 }
                 timeout = null;
             });
@@ -111,6 +152,19 @@ document.addEventListener("DOMContentLoaded", function () {
                 timeout = setTimeout(search, 300);
             }
         });
+
+        // Restore search from URL parameters
+        const urlParams = new URLSearchParams(window.location.search);
+        const qParam = urlParams.get("q");
+        const whereParam = urlParams.get("where");
+        if (qParam && qParam.length > 3) {
+            queryField.value = qParam;
+            const whereSelect = document.getElementById("searchWhereSelect");
+            if (whereParam && whereSelect) {
+                whereSelect.value = whereParam;
+            }
+            search();
+        }
     }
 
     const btnReindexRegen = document.getElementById("f-btn-reindex-regen");
@@ -124,4 +178,19 @@ document.addEventListener("DOMContentLoaded", function () {
             tooltip.title = tooltip.getAttribute("data-title") || "Tooltip";
         });
     });
+
+    // Deprecated function toggle
+    const showDeprecated = document.getElementById("show-deprecated");
+    const results = document.getElementById("results");
+    if (showDeprecated && results) {
+        // Default: hide deprecated
+        results.classList.add("hide-deprecated");
+        showDeprecated.addEventListener("change", function () {
+            if (this.checked) {
+                results.classList.remove("hide-deprecated");
+            } else {
+                results.classList.add("hide-deprecated");
+            }
+        });
+    }
 });

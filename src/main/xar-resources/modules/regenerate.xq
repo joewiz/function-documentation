@@ -11,10 +11,10 @@ declare option output:media-type "application/json";
 try {
     let $user := sm:id()/sm:id/(sm:effective|sm:real)[1]/sm:username
     return if (sm:is-dba($user)) then (
-        let $result := generate:fundocs()
+        let $summary := generate:fundocs()
         return
             <response status="ok">
-                <message>Scan completed! {$result}</message>
+                <message>Scan completed! Generated documentation for {$summary/generated/string()} of {$summary/total/string()} modules.</message>
             </response>
     ) else (
         response:set-status-code(403),

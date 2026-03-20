@@ -6,14 +6,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        exist-version: [latest, 6.2.0]
-        java-version: ['8', '21']
+        exist-version: [latest, 7.0.0]
+        java-version: ['17', '21']
         os: [ubuntu-latest]
-        exclude:
-           - exist-version: 6.2.0
-             java-version: 21
-           - exist-version: latest
-             java-version: 8
 
     runs-on: ${{ matrix.os }}
     steps:
@@ -48,7 +43,7 @@ jobs:
           docker run -dit -p 8080:8080 -v ${{ github.workspace }}/target:/exist/autodeploy \
           --name exist --rm --health-interval=1s --health-start-period=1s \
           duncdrum/existdb:${{ matrix.exist-version }}
-      
+
       - name: wait for install to finish
         timeout-minutes: 5
         run: |
@@ -62,8 +57,3 @@ jobs:
 
       - name: Run e2e test
         run: npx cypress run
-
-      # - name: Test
-      #   env:
-      #     CYPRESS_RECORD_KEY: ${{ secrets.CYPRESS_RECORD_KEY }}
-      #   run: mvn verify

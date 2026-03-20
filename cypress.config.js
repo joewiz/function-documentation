@@ -12,6 +12,8 @@ module.exports = defineConfig({
       return require('./src/test/cypress/plugins/index.js')(on, config)
     },
     baseUrl: 'http://localhost:8080/exist/apps/fundocs/',
+    pageLoadTimeout: 60000,
+    responseTimeout: 60000,
     excludeSpecPattern: 'src/test/cypress/integration/examples/*.js',
     specPattern: 'src/test/cypress/integration/**/*.{js,jsx,ts,tsx}',
     supportFile: 'src/test/cypress/support/index.js',

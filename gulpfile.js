@@ -8,7 +8,6 @@ const header = require('gulp-header')
 
 // Styles
 const sass = require('gulp-sass')(require('sass'))
-const prefix = require('gulp-autoprefixer')
 const minify = require('gulp-cssnano')
 const sourcemaps = require('gulp-sourcemaps')
 
@@ -81,9 +80,9 @@ const paths = {
     styles: [
       "node_modules/bootstrap/dist/css/bootstrap.min.*",
       "node_modules/@highlightjs/cdn-assets/styles/atom-one-dark.min.css",
-      "node_modules/@neos21/bootstrap3-glyphicons/dist/css/*"
+      "node_modules/bootstrap-icons/font/bootstrap-icons.min.css"
     ],
-    fonts: ["node_modules/@neos21/bootstrap3-glyphicons/dist/fonts/*"],
+    fonts: ["node_modules/bootstrap-icons/font/fonts/*"],
   },
   svgs: {
     input: 'src/main/frontend/svg/*.svg',
@@ -100,26 +99,20 @@ function clean(cb) {
 exports.clean = clean;
 
 // Process, lint, and minify Sass files
-function buildStyles (done) {
+async function buildStyles (done) {
   // Make sure this feature is activated before running
   if (!settings.styles) return done()
 
+  const { default: prefix } = await import('gulp-autoprefixer')
+
   // Run tasks on all Sass files
-  src(paths.styles.input)
+  return src(paths.styles.input)
     .pipe(sourcemaps.init())
     .pipe(sass({
       outputStyle: 'expanded',
       sourceComments: true
     }))
-    .pipe(prefix({
-      cascade: true,
-      remove: true
-    }))
-    // Uncomment if you want the non minified files
-    // .pipe(header(banner.full, {
-    //   package: pkg
-    // }))
-    // .pipe(dest(paths.styles.output))
+    .pipe(prefix())
     .pipe(rename({
       suffix: '.min'
     }))
@@ -133,9 +126,6 @@ function buildStyles (done) {
     }))
     .pipe(sourcemaps.write('.'))
     .pipe(dest(paths.styles.output))
-
-  // Signal completion
-  done()
 }
 exports.styles = buildStyles;
 

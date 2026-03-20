@@ -45,6 +45,18 @@ declare function app:check-not-dba-user-and-not-data($node as node(), $model as 
     if (app:check-user-is-dba() or exists($app:data)) then () else $node
 };
 
+declare function app:check-low-module-count($node as node(), $model as map(*)) {
+    (: Show a tip to regenerate if docs exist but the module count seems low,
+       which can happen when fundocs runs before all packages are installed :)
+    let $module-count := count($app:data)
+    return
+        if (app:check-user-is-dba() and $module-count > 0 and $module-count < 20) then
+            element { node-name($node) } {
+                $node/@* except $node/@data-template, $node/node()
+            }
+        else ()
+};
+
 declare
     %templates:default("action", "search")
     %templates:default("where", "everywhere")
@@ -174,7 +186,7 @@ function app:print-module(
             <div class="module-head-inner row">
                 <div class="col-md-1 hidden-xs">
                     <a href="view?uri={$uri}&amp;location={$location}&amp;details=true"
-                        class="module-info-icon"><span class="glyphicon glyphicon-info-sign"/></a>
+                        class="module-info-icon" aria-label="Module details"><i class="bi bi-info-circle-fill"/></a>
                 </div>
                 <div class="col-md-11 col-xs-12">
                     <h3><a href="view?uri={$uri}&amp;location={$location}&amp;details=true">{ $uri }</a></h3>
@@ -188,7 +200,7 @@ function app:print-module(
                     }
                     <p class="module-description">{ $parsed }</p>
                     {
-                        let $metadata := $module/xqdoc:module/xqdoc:comment/(xqdoc:author|xqdoc:version|xqdoc:since)
+                        let $metadata := $module/xqdoc:module/xqdoc:comment/(xqdoc:author|xqdoc:version|xqdoc:since|xqdoc:see)
                         return
                             if (empty($metadata)) then (
                             ) else (
@@ -198,7 +210,12 @@ function app:print-module(
                                     return
                                         <tr>
                                             <td>{local-name($meta)}</td>
-                                            <td>{$meta/string()}</td>
+                                            <td>{
+                                                if (local-name($meta) eq "see" and matches($meta/string(), "^https?://")) then
+                                                    <a href="{$meta/string()}">{$meta/string()}</a>
+                                                else
+                                                    $meta/string()
+                                            }</td>
                                         </tr>
                                 }
                                 </table>
@@ -225,7 +242,7 @@ function app:print-module(
             }
             {
                 for $function in $functions
-                order by $function/xqdoc:name
+                order by $function/xqdoc:name, xs:integer($function/xqdoc:arity)
                 return
                     app:print-function($function, false())
             }
@@ -257,8 +274,9 @@ function app:print-function(
             return parse-xml($constructed-xml)/*/node()
         )
     let $extDocs := app:get-extended-doc($function)[1]
+    let $is-deprecated := exists($comment/xqdoc:deprecated)
     return
-        <div class="function" id="{$function-identifier}">
+        <div class="function{if ($is-deprecated) then ' deprecated' else ''}" id="{$function-identifier}">
             { app:print-function-header($function)}
             <div class="function-detail">
                 <p class="description">{ $parsed }</p>
@@ -274,7 +292,7 @@ function app:print-function(
                             (if ($location) then ("&amp;location=" || $location) else "#")
                         return
                             <a href="view{$query}" class="extended-docs btn btn-primary">
-                                <span class="glyphicon glyphicon-info-sign"></span> Read more</a>
+                                <i class="bi bi-info-circle"></i> Read more</a>
                     )
                 }
                 <dl class="parameters">
@@ -293,6 +311,33 @@ function app:print-function(
                     ) else (
                         <dt>Deprecated:</dt>,
                         <dd>{ $comment/xqdoc:deprecated/string() }</dd>
+                    ),
+                    if (empty($comment/xqdoc:author)) then (
+                    ) else (
+                        <dt>Author:</dt>,
+                        <dd>{ string-join($comment/xqdoc:author/string(), ", ") }</dd>
+                    ),
+                    if (empty($comment/xqdoc:version)) then (
+                    ) else (
+                        <dt>Version:</dt>,
+                        <dd>{ $comment/xqdoc:version/string() }</dd>
+                    ),
+                    if (empty($comment/xqdoc:since)) then (
+                    ) else (
+                        <dt>Since:</dt>,
+                        <dd>{ $comment/xqdoc:since/string() }</dd>
+                    ),
+                    if (empty($comment/xqdoc:see)) then (
+                    ) else (
+                        <dt>See:</dt>,
+                        <dd>{
+                            for $see in $comment/xqdoc:see
+                            return
+                                if (matches($see/string(), "^https?://")) then
+                                    <a href="{$see/string()}">{$see/string()}</a>
+                                else
+                                    <span>{$see/string()}</span>
+                        }</dd>
                     )
                 }
                 </dl>
@@ -311,8 +356,24 @@ function app:print-function(
 
 declare %private
 function app:print-function-header($function as element(xqdoc:function)) as element(header) {
+    let $function-name := $function/xqdoc:name
+    let $arity := xs:integer($function/xqdoc:arity)
+    let $function-identifier :=
+        if (contains($function-name, ':')) then
+            substring-after($function-name, ":") || "." || $arity
+        else
+            $function-name || $arity
+    return
     <header class="function-head">
-        <h4>{$function/xqdoc:name}#{$function/xqdoc:arity}</h4>
+        <h4>
+            <a href="#{$function-identifier}" class="anchor-link" aria-label="Link to {$function-name}#{$function/xqdoc:arity}">#</a>
+            {$function-name}#{$function/xqdoc:arity}
+            {
+                if (exists($function/xqdoc:comment/xqdoc:deprecated)) then
+                    <span class="badge bg-warning text-dark ms-2">Deprecated</span>
+                else ()
+            }
+        </h4>
         <pre class="signature"><code class="language-xquery hljs" data-highlighted="yes">
             <span class="{app:html-class-for-function($function)}">{$function/xqdoc:name}</span>({
                 let $ari := xs:integer($function/xqdoc:arity)

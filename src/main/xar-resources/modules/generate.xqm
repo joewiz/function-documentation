@@ -23,13 +23,19 @@ declare variable $generate:doc-collection := $config:app-root || "/data";
 
 
 declare function generate:fundocs() {
-    (
+    let $modules := (
         generate:load-mapped-modules(),
         generate:load-internal-modules(),
         generate:load-stored-modules()
     )
-        => filter(generate:has-definition#1)
-        => for-each(generate:generate-and-store-xqdoc#1)
+    let $with-definitions := filter($modules, generate:has-definition#1)
+    let $generated-count := count($with-definitions)
+    let $_ := for-each($with-definitions, generate:generate-and-store-xqdoc#1)
+    return
+        <summary>
+            <total>{count($modules)}</total>
+            <generated>{$generated-count}</generated>
+        </summary>
 };
 
 declare %private function generate:load-mapped-modules() as array(*)* {
@@ -57,9 +63,9 @@ declare %private function generate:safe-inspect ($moduleUri as xs:anyURI, $inspe
          : Expected to fail if XQuery file is not a library module
          : Will also guard against malformed and missing modules
          :)
-        util:log("WARN", (
+        util:log("DEBUG", (
             "Could not compile function documentation for: ",
-            $moduleUri, " (", $err:code, ")", $err:description
+            $moduleUri, " (", $err:code, ") ", $err:description
         ))
     }
 };
@@ -95,14 +101,17 @@ declare %private function generate:module-to-xqdoc($module as element(module)) a
                         <xqdoc:version>{$module/version/string()}</xqdoc:version>
                 }
                 {
-                    if (empty($module/author)) then ()
-                    else
-                        <xqdoc:author>{$module/author/string()}</xqdoc:author>
+                    for $author in $module/author
+                    return <xqdoc:author>{$author/string()}</xqdoc:author>
                 }
                 {
-                    if (empty($module/see)) then ()
+                    for $see in $module/see
+                    return <xqdoc:see>{$see/string()}</xqdoc:see>
+                }
+                {
+                    if (empty($module/since)) then ()
                     else
-                        <xqdoc:see>{$module/see/string()}</xqdoc:see>
+                        <xqdoc:since>{$module/since/string()}</xqdoc:since>
                 }
             </xqdoc:comment>
         </xqdoc:module>
@@ -166,7 +175,23 @@ declare %private function generate:function-to-xqdoc($function as element(functi
                 if (empty($function/deprecated)) then ()
                 else
                     <xqdoc:deprecated>{$function/deprecated/string()}</xqdoc:deprecated>
-            }  
+            }
+            {
+                for $author in $function/author
+                return <xqdoc:author>{$author/string()}</xqdoc:author>
+            }
+            {
+                if (empty($function/version)) then ()
+                else <xqdoc:version>{$function/version/string()}</xqdoc:version>
+            }
+            {
+                for $see in $function/see
+                return <xqdoc:see>{$see/string()}</xqdoc:see>
+            }
+            {
+                if (empty($function/since)) then ()
+                else <xqdoc:since>{$function/since/string()}</xqdoc:since>
+            }
         </xqdoc:comment>
     </xqdoc:function>
 };
